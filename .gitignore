@@ -15,5 +15,12 @@ similarity_search/tmpfile.bin
 *.so
 *.pyc
 *.egg-info/
+*.egg/
 .idea
 dist/
+build/
+build_cpu/
+build_emax7/
+build_aarch64/
+lib/
+.vscode
