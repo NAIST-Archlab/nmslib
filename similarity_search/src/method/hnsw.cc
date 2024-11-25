@@ -46,6 +46,8 @@
 #include <typeinfo>
 #include <vector>
 
+#include "imax_utils.h"
+
 #include "sort_arr_bi.h"
 #define MERGE_BUFFER_ALGO_SWITCH_THRESHOLD 100
 
@@ -120,6 +122,12 @@ namespace similarity {
         , linkLists_(nullptr)
         , fstdistfunc_(nullptr)
     {
+#ifdef ARMZYNQ
+        if (imaxMembase_ == nullptr) imaxMembase_ = sysinit(100000000, 64, 8);
+        std::cout << "imaxMembase_ = " << (void *)imaxMembase_ << std::endl;
+#else
+        if (imaxMembase_ == nullptr) imaxMembase_ = new unsigned char[100000000];
+#endif
     }
 
     void
@@ -418,7 +426,11 @@ namespace similarity {
 
         size_t total_memory_allocated = (memoryPerObject_ * ElList_.size());
         // we allocate a few extra bytes to prevent prefetch from accessing out of range memory
+        #ifndef EMAX7
         data_level0_memory_ = (char *)malloc((memoryPerObject_ * ElList_.size()) + EXTRA_MEM_PAD_SIZE);
+        #else
+        data_level0_memory_ = imaxMembase_;
+        #endif
         CHECK(data_level0_memory_);
 
         offsetLevel0_ = dataSectionSize;
@@ -517,7 +529,9 @@ namespace similarity {
     {
         delete visitedlistpool;
         if (data_level0_memory_)
-            free(data_level0_memory_);
+        #ifndef EMAX7
+        free(data_level0_memory_);
+        #endif
         if (linkLists_) {
             for (int i = 0; i < data_rearranged_.size(); i++) {
                 if (linkLists_[i])
@@ -1048,7 +1062,11 @@ namespace similarity {
         LOG(LIB_INFO) << "Total: " << totalElementsStored_ << ", Memory per object: " << memoryPerObject_;
         size_t data_plus_links0_size = memoryPerObject_ * totalElementsStored_;
         // we allocate a few extra bytes to prevent prefetch from accessing out of range memory
+        #ifndef EMAX7
         data_level0_memory_ = (char *)malloc(data_plus_links0_size + EXTRA_MEM_PAD_SIZE);
+        #else
+        data_level0_memory_ = imaxMembase_;
+        #endif
         CHECK(data_level0_memory_);
         input.read(data_level0_memory_, data_plus_links0_size);
         // we allocate a few extra bytes to prevent prefetch from accessing out of range memory

@@ -1,187 +1,6 @@
 #include "method/hnsw_distfunc_mv.h"
 #include <stdio.h>
 
-#ifdef EMAX7
-#ifdef ARMZYNQ
-Uchar* membase[8] = {NULL};
-Uchar* prev[8] = {NULL};
-
-Uchar** sysinit(Uint memsize, Uint alignment, Uint threadQty) {
-#if defined(ARMZYNQ) && defined(EMAX7)
-    if (emax7_open(threadQty) == NULL) exit(1);
-    for (int i = 0; i < threadQty; i++) {
-        membase[i] = emax_info[i].ddr_mmap + (i*256*1024*1024);
-        {int j;for (j = 0; j < (memsize + sizeof(Dll) - 1) / sizeof(Dll); j++)*((Dll *)membase[i] + j) = 0;}
-        prev[i] = (Uchar *)((Dll *)membase[i] + (memsize + sizeof(Dll) - 1) / sizeof(Dll));
-    }
-#elif __linux__ == 1
-    for (int i = 0; i < threadQty; i++) {
-        posix_memalign((void**)&membase[i], alignment, memsize);
-    }
-#else
-    for (int i = 0; i < threadQty; i++) {
-        membase[i] = (void *)malloc(memsize + alignment);
-        prev[i] = membase[i];
-        if ((Ull)membase[i] & (Ull)(alignment - 1)) {membase[i] = (void *)(((Ull)membase[i] & ~(Ull)(alignment - 1)) + alignment);}
-    }
-#endif
-
-#if !defined(ARMZYNQ) && defined(EMAX7)
-    for (int i = 0; i < threadQty; i++) {
-        emax_info[i].dma_phys = DMA_BASE2_PHYS; /* defined in emax7lib.h */
-        emax_info[i].dma_mmap = emax_info[i].dma_phys;
-        emax_info[i].reg_phys = REG_BASE2_PHYS; /* defined in emax7lib.h */
-        emax_info[i].reg_mmap = emax_info[i].reg_phys;
-        emax_info[i].lmm_phys = LMM_BASE2_PHYS;
-        emax_info[i].lmm_mmap = emax_info[i].lmm_phys;
-        emax_info[i].ddr_phys = membase[i];
-        emax_info[i].ddr_mmap = emax_info[i].ddr_phys;
-    }
-#endif
-
-#if (defined(ARMSIML) || defined(ARMZYNQ)) && defined(EMAX7)
-    for (int i = 0; i < threadQty; i++) {
-        emax7[i].dma_ctrl = emax_info[i].dma_mmap;
-        emax7[i].reg_ctrl = emax_info[i].reg_mmap;
-        ((struct reg_ctrl *)emax7[i].reg_ctrl)->i[i].cmd = CMD_RESET;
-#if defined(ARMZYNQ)
-        usleep(1);
-#endif
-        switch (((struct reg_ctrl *)emax7[i].reg_ctrl)->i[i].stat >> 8 & 0xf) {
-        case 3:
-            EMAX_DEPTH = 64;
-            break;
-        case 2:
-            EMAX_DEPTH = 32;
-            break;
-        case 1:
-            EMAX_DEPTH = 16;
-            break;
-        default:
-            EMAX_DEPTH = 8;
-            break;
-        }
-        ((struct reg_ctrl *)emax7[i].reg_ctrl)->i[i].adtr = emax_info[i].ddr_mmap - emax_info[i].lmm_phys;
-        ((struct reg_ctrl *)emax7[i].reg_ctrl)->i[i].dmrp = 0LL;
-    }
-#endif
-    return membase;
-}
-
-void imemcpy(Uint *dst, Uint *src, int words) {
-    union {
-        Uint i[4];
-        Ull l[2];
-        Dll d;
-    } buf;
-
-    Uint loop, i;
-    if (words >= 1 && ((Ull)dst & sizeof(Uint))) { /* 4B-access odd */
-        *dst++ = *src++;
-        words--;
-    }
-    if (words >= 2 && ((Ull)dst & sizeof(Ull))) { /* 8B-access odd */
-        if ((Ull)src & sizeof(Uint)) {
-            buf.i[0] = *src++;
-            buf.i[1] = *src++;
-            *(Ull *)dst = buf.l[0];
-        } else {
-            *(Ull *)dst = *(Ull *)src;
-            src += sizeof(Ull) / sizeof(Uint);
-        }
-        dst += sizeof(Ull) / sizeof(Uint);
-        words -= 2;
-    }
-
-    if (loop = words / (sizeof(Dll) / sizeof(Uint))) {
-        if ((Ull)src & sizeof(Uint)) {
-            for (i = 0; i < loop; i++) {
-                buf.i[0] = *src++;
-                buf.i[1] = *src++;
-                buf.i[2] = *src++;
-                buf.i[3] = *src++;
-                *(Dll *)dst = buf.d;
-                dst += sizeof(Dll) / sizeof(Uint);
-            }
-        } else if ((Ull)src & sizeof(Ull)) {
-            for (i = 0; i < loop; i++) {
-                buf.l[0] = *(Ull *)src;
-                src += sizeof(Ull) / sizeof(Uint);
-                buf.l[1] = *(Ull *)src;
-                src += sizeof(Ull) / sizeof(Uint);
-                *(Dll *)dst = buf.d;
-                dst += sizeof(Dll) / sizeof(Uint);
-            }
-        } else {
-            for (i = 0; i < loop; i++) {
-                *(Dll *)dst = *(Dll *)src;
-                src += sizeof(Dll) / sizeof(Uint);
-                dst += sizeof(Dll) / sizeof(Uint);
-            }
-        }
-        words -= loop * (sizeof(Dll) / sizeof(Uint));
-    }
-
-    if (words >= 2) { /* 8B-access */
-        if ((Ull)src & sizeof(Uint)) {
-            buf.i[0] = *src++;
-            buf.i[1] = *src++;
-            *(Ull *)dst = buf.l[0];
-        } else {
-            *(Ull *)dst = *(Ull *)src;
-            src += sizeof(Ull) / sizeof(Uint);
-        }
-        dst += sizeof(Ull) / sizeof(Uint);
-        words -= 2;
-    }
-    if (words >= 1) { /* 4B-access */
-        *dst++ = *src++;
-        words--;
-    }
-}
-
-void xmax_bzero(Uint *dst, int words) {
-    Uint loop, i;
-    if (words >= 1 && ((Ull)dst & sizeof(Uint))) { /* 4B-access odd */
-        *dst++ = 0;
-        words--;
-    }
-    if (words >= 2 && ((Ull)dst & sizeof(Ull))) { /* 8B-access odd */
-        *(Ull *)dst = 0;
-        dst += sizeof(Ull) / sizeof(Uint);
-        words -= 2;
-    }
-
-    if (loop = words / (sizeof(Dll) / sizeof(Uint))) {
-        for (i = 0; i < loop; i++) {
-#if __AARCH64EL__ == 1
-            *((Dll *)dst) = 0;
-#else
-            ((Dll *)dst)->u[0] = 0;
-            ((Dll *)dst)->u[1] = 0;
-#endif
-            dst += sizeof(Dll) / sizeof(Uint);
-        }
-        words -= loop * (sizeof(Dll) / sizeof(Uint));
-    }
-
-    if (words >= 2) { /* 8B-access */
-        *(Ull *)dst = 0;
-        dst += sizeof(Ull) / sizeof(Uint);
-        words -= 2;
-    }
-    if (words >= 1) { /* 4B-access */
-        *dst++ = 0;
-        words--;
-    }
-}
-#endif
-
-void copy_keys_to_imax(char *data_level0_memory_, size_t data_size, size_t maxThreadQty) {
-    if (membase[0] == NULL) { sysinit(1024*1024*128*sizeof(float), 32, maxThreadQty); }
-    imemcpy((Uint *)membase[0], (Uint *)data_level0_memory_, data_size);
-}
-
 #define IMAX_KERNEL_COL_SIZE 56
 #define NCHIP 1
 
@@ -190,50 +9,25 @@ int imax_search_mv(float *curdist, int *curNodeNum, float *pVectq, int *data, si
     reset_nanosec(threadId);
     int imax_emb = qty % (IMAX_KERNEL_COL_SIZE*2) ? ((qty/(IMAX_KERNEL_COL_SIZE*2)) + 1)*IMAX_KERNEL_COL_SIZE*2 : qty;
     int imax_size = size % 4 ? ((size/4) + 1)*4 : size;
-    #ifdef ARMZYNQ
-    if (membase[LANE] == NULL) { sysinit(1024*1024*128*sizeof(float), 32, maxThreadQty); }
-    xmax_bzero((Uint *)membase[LANE], 1024*1024*128);
-    int key_size = imax_size*imax_emb*sizeof(float);
-    int query_size = imax_emb*sizeof(float);
-    int result_size = imax_size*sizeof(float);
-    // TODO: マルチレーンの二番目レーンの値がおかしい
-    // おそらくメモリ割り当ての問題
-    float *imax_key_array = (float *)membase[LANE];
-    float *imax_query_array = imax_key_array + (imax_size*imax_emb)*4;
+    float *imax_key_array = data_level0_memory_ + 1024*1024*1024;
+    float *imax_query_array = imax_key_array + imax_emb*imax_size*4;
     float *imax_result_array = imax_query_array + imax_emb*4;
-    #else
-    float imax_key_array[imax_size*imax_emb];
-    float imax_query_array[imax_emb];
-    float imax_result_array[imax_size];
-    #endif
     int changed = 0;
-    for (int j = 0; j < imax_emb; j++) {
-        if (j < qty) {
-            imax_query_array[j] = pVectq[j];
-        } else {
-            imax_query_array[j] = 0;
-        }
-    }
-    for (int j = 1; j <= imax_size; j++) {
-        if (j <= size) {
-            int tnum = *(data + j);
-            for (int k = 0; k < imax_emb; k++) {
-                if (k < qty) {
-                    imax_key_array[(j-1)*imax_emb + k] = *(data_level0_memory_ + tnum * memoryPerObject_ + offsetData_ + 16 + k);
-                } else {
-                    imax_key_array[(j-1)*imax_emb + k] = 0;
-                }
-            }
-        } else {
-            for (int k = 0; k < imax_emb; k++) {
-                imax_key_array[(j-1)*imax_emb + k] = 0;
-            }
-        }
-        imax_result_array[j-1] = 0;
-    }
 
     printf("LANE[%d] imax_search_mv: imax_emb=%d, imax_size=%d\n", LANE, imax_emb, imax_size);
     printf("LANE[%d] imax_search_mv: imax_query_array=%p, imax_key_array=%p, imax_result_array=%p\n", LANE, imax_query_array, imax_key_array, imax_result_array);
+
+    xmax_bzero((Uint *)imax_key_array, imax_emb*imax_size);
+    xmax_bzero((Uint *)imax_query_array, imax_emb);
+    xmax_bzero((Uint *)imax_result_array, imax_size);
+
+    for (int i = 1; i <= size; i++) {
+        int tnum = *(data + i);
+        float *key = (float *)(data_level0_memory_ + tnum * memoryPerObject_ + offsetData_ + 16);
+        imemcpy(&imax_key_array[(i-1)*imax_emb], key, qty);
+    }
+    imemcpy(imax_query_array, pVectq, qty);
+
     int imax_kernel_row_size = (256*1024)/imax_emb;
     if (imax_kernel_row_size < imax_size) {
         imax_kernel_row_size -= imax_kernel_row_size % imax_size;
@@ -374,16 +168,12 @@ int imax_search_mv(float *curdist, int *curNodeNum, float *pVectq, int *data, si
             changed = 1;
         }
     }
-    get_nanosec(0, 0);
-    show_nanosec(0);
     printf("]\n");
     printf("IMAX Done\n");
+    get_nanosec(0, 0);
+    show_nanosec(0);
     #ifdef ARMZYNQ
-    // imax_dealloc(key_size, 32);
-    // imax_dealloc(query_size, 32);
-    // imax_dealloc(result_size, 32);
     #endif
     printf("imax_search_mv: changed=%d\n", changed);
     return changed;
 }
-#endif

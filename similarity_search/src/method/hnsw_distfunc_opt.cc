@@ -39,9 +39,7 @@
 #include <limits>
 #include <vector>
 
-#ifdef EMAX7
 #include "method/hnsw_distfunc_mv.h"
-#endif
 
 //#define DIST_CALC
 namespace similarity {

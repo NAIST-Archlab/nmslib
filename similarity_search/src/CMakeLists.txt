@@ -11,7 +11,7 @@
 file(GLOB PROJ_HDR_FILES ${PROJECT_SOURCE_DIR}/include/*.h ${PROJECT_SOURCE_DIR}/include/method/*.h ${PROJECT_SOURCE_DIR}/include/space/*.h ${PROJECT_SOURCE_DIR}/include/factory/*.h ${PROJ_HDR_FILES}/include/factory/*/*.h)
 file(GLOB OTH_HDR_FILES)
 set(HDR_FILES ${PROJ_HDR_FILES} ${OTH_HDR_FILES})
-file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cc ${PROJECT_SOURCE_DIR}/src/space/*.cc ${PROJECT_SOURCE_DIR}/src/method/*.cc ${PROJECT_SOURCE_DIR}/src/method/*.c)
+file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cc ${PROJECT_SOURCE_DIR}/src/*.c ${PROJECT_SOURCE_DIR}/src/space/*.cc ${PROJECT_SOURCE_DIR}/src/method/*.cc ${PROJECT_SOURCE_DIR}/src/method/*.c)
 
 if (NOT WITH_EXTRAS)
   # Extra spaces
@@ -56,7 +56,7 @@ if (EMAX7)
             OUTPUT ${TEMP_DIR}/hnsw_distfunc_mv-emax7.c
             DEPENDS ${CMAKE_SOURCE_DIR}/src/method/hnsw_distfunc_mv.c
             COMMAND ${CMAKE_SOURCE_DIR}/include/conv-mark/conv-mark ${CMAKE_SOURCE_DIR}/src/method/hnsw_distfunc_mv.c > ${TEMP_DIR}/hnsw_distfunc_mv.c-mark.c
-            COMMAND cpp -P -DEMAX7 -DARMZYNQ -DFPDDMA -I${CMAKE_SOURCE_DIR}/include ${TEMP_DIR}/hnsw_distfunc_mv.c-mark.c > ${TEMP_DIR}/hnsw_distfunc_mv.c-cppo.c
+            COMMAND cpp -P -DEMAX7 -DARMZYNQ -DFPDDMA -DNO_EMAX7LIB_BODY -I${CMAKE_SOURCE_DIR}/include ${TEMP_DIR}/hnsw_distfunc_mv.c-mark.c > ${TEMP_DIR}/hnsw_distfunc_mv.c-cppo.c
             COMMAND ${CMAKE_SOURCE_DIR}/include/conv-c2d/conv-c2d ${TEMP_DIR}/hnsw_distfunc_mv.c-cppo.c
         )
 

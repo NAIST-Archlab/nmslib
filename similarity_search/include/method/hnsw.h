@@ -538,6 +538,7 @@ namespace similarity {
         int maxlevel_;
         unsigned int enterpointId_;
         unsigned int totalElementsStored_;
+        unsigned char *imaxMembase_;
 
         ObjectVector data_rearranged_;
 
