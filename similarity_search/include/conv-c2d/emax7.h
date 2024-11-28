@@ -3,7 +3,7 @@
 /*         Copyright (C) 2012 by NAIST */
 /*         Primary writer: Y.Nakashima */
 /*                nakashim@is.naist.jp */
-
+#pragma once
 #ifndef UTYPEDEF
 #define UTYPEDEF
 typedef unsigned char      Uchar;
@@ -19,6 +19,9 @@ typedef struct {Ull u[2];} Dll;
 #endif
 
 #if 1
+#ifdef __cplusplus
+extern "C" {
+#endif
 void /*__attribute__((always_inline))*/ cex(Uint, Ull*,    Ull, Ull, Ull, Ull, Ushort);
 void /*__attribute__((always_inline))*/ ex4(Uint, Ull*,    Ull*, Uint, Ull*, Uint, Ull*, Uint, Uint, Ull*, Uint, Ull*);
 Ull  /*__attribute__((always_inline))*/ exm(Ull,  Uchar);
@@ -30,6 +33,9 @@ void /*__attribute__((always_inline))*/ mop(Uint, Ull,     Ull*, Ull, Ull, Uchar
 Ull  /*__attribute__((always_inline))*/ eam(Ull,  Uchar);
 void /*__attribute__((always_inline))*/ eag(Ull*, Ull,     Ull);
 void /*__attribute__((always_inline))*/ mmp(Uint, Ull,     Ull*, Ull, Ull, Uint, Uint);
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 #ifndef EMAX7DEF

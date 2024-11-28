@@ -1,9 +1,10 @@
 #include "imax_utils.h"
 
-#ifdef EMAX7
 unsigned char* sysinit(Uint memsize, Uint alignment, Uint threadQty) {
     unsigned char* membase = NULL;
+    printf("sysinit: memsize=%d, alignment=%d, threadQty=%d\n", memsize, alignment, threadQty);
 #if defined(ARMZYNQ) && defined(EMAX7)
+    printf("sysinit: emax7_open(%d)\n", threadQty);
     if (emax7_open(threadQty) == NULL) exit(1);
     membase = emax_info[0].ddr_mmap;
     {int j;for (j = 0; j < (memsize + sizeof(Dll) - 1) / sizeof(Dll); j++)*((Dll *)membase + j) = 0;}
@@ -167,4 +168,3 @@ void xmax_bzero(Uint *dst, int words) {
         words--;
     }
 }
-#endif

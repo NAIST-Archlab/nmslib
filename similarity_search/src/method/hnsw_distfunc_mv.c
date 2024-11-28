@@ -1,4 +1,5 @@
 #include "method/hnsw_distfunc_mv.h"
+#include "imax_utils.h"
 #include <stdio.h>
 
 #define IMAX_KERNEL_COL_SIZE 56

@@ -121,6 +121,7 @@ namespace similarity {
         , data_level0_memory_(nullptr)
         , linkLists_(nullptr)
         , fstdistfunc_(nullptr)
+        , imaxMembase_(nullptr)
     {
 #ifdef ARMZYNQ
         if (imaxMembase_ == nullptr) imaxMembase_ = sysinit(100000000, 64, 8);

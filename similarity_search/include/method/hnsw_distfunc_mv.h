@@ -1,7 +1,6 @@
 #pragma once
 #include <stdio.h>
 #include <math.h>
-#include "imax_utils.h"
 
 #if __cplusplus
 extern "C" {
