@@ -7,7 +7,6 @@
 
 int imax_search_mv(float *curdist, int *curNodeNum, float *pVectq, int *data, size_t qty, size_t size, char *data_level0_memory_, size_t memoryPerObject_, size_t offsetData_, size_t threadId, size_t maxThreadQty) {
     int LANE = threadId;
-    reset_nanosec(threadId);
     int imax_emb = qty % (IMAX_KERNEL_COL_SIZE*2) ? ((qty/(IMAX_KERNEL_COL_SIZE*2)) + 1)*IMAX_KERNEL_COL_SIZE*2 : qty;
     int imax_size = size % 4 ? ((size/4) + 1)*4 : size;
     float *imax_key_array = data_level0_memory_ + 1024*1024*1024;
@@ -15,8 +14,8 @@ int imax_search_mv(float *curdist, int *curNodeNum, float *pVectq, int *data, si
     float *imax_result_array = imax_query_array + imax_emb*4;
     int changed = 0;
 
-    printf("LANE[%d] imax_search_mv: imax_emb=%d, imax_size=%d\n", LANE, imax_emb, imax_size);
-    printf("LANE[%d] imax_search_mv: imax_query_array=%p, imax_key_array=%p, imax_result_array=%p\n", LANE, imax_query_array, imax_key_array, imax_result_array);
+    // printf("LANE[%d] imax_search_mv: imax_emb=%d, imax_size=%d\n", LANE, imax_emb, imax_size);
+    // printf("LANE[%d] imax_search_mv: imax_query_array=%p, imax_key_array=%p, imax_result_array=%p\n", LANE, imax_query_array, imax_key_array, imax_result_array);
 
     xmax_bzero((Uint *)imax_key_array, imax_emb*imax_size);
     xmax_bzero((Uint *)imax_query_array, imax_emb);
@@ -153,13 +152,13 @@ int imax_search_mv(float *curdist, int *curNodeNum, float *pVectq, int *data, si
 //EMAX5A drain_dirty_lmm
 
     float minDist = INFINITY;
-    printf("IMAX Result: [");
+    // printf("IMAX Result: [");
     for (int j = 1; j <= size; j++) {
         float result = -imax_result_array[j-1];
-        printf("%f", result);
-        if (j < size) {
-            printf(", ");
-        }
+        // printf("%f", result);
+        // if (j < size) {
+            // printf(", ");
+        // }
         if (result < minDist) {
             minDist = result;
         }
@@ -169,12 +168,8 @@ int imax_search_mv(float *curdist, int *curNodeNum, float *pVectq, int *data, si
             changed = 1;
         }
     }
-    printf("]\n");
-    printf("IMAX Done\n");
-    get_nanosec(0, 0);
-    show_nanosec(0);
-    #ifdef ARMZYNQ
-    #endif
-    printf("imax_search_mv: changed=%d\n", changed);
+    // printf("]\n");
+    // printf("IMAX Done\n");
+    // printf("imax_search_mv: changed=%d\n", changed);
     return changed;
 }

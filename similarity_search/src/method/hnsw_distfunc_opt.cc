@@ -40,6 +40,12 @@
 #include <vector>
 
 #include "method/hnsw_distfunc_mv.h"
+extern "C" {
+    void sleep_nanosec(int nano);
+    void reset_nanosec(int LANE);
+    void get_nanosec(int LANE, int class_no);
+    void show_nanosec(int LANE);
+}
 
 //#define DIST_CALC
 namespace similarity {
@@ -172,6 +178,7 @@ namespace similarity {
         dist_t curdist = (fstdistfunc_(
             pVectq, (float *)(data_level0_memory_ + enterpointId_ * memoryPerObject_ + offsetData_ + 16), qty, TmpRes));
 
+        reset_nanosec(query->GetThreadId());
         for (int i = maxlevel1; i > 0; i--) {
             bool changed = true;
             while (changed) {
@@ -202,6 +209,8 @@ namespace similarity {
 #endif
             }
         }
+        get_nanosec(query->GetThreadId(), 0);
+        show_nanosec(query->GetThreadId());
 
         SortArrBI<dist_t, int> sortedArr(max<size_t>(ef_, query->GetK()));
         sortedArr.push_unsorted_grow(curdist, curNodeNum);
